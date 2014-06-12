@@ -108,7 +108,7 @@ function readPlaylistItem(uInt8Array) {
   reader.readAsArrayBuffer(file);
 }
 
-load_playlist('/clips/Nasa-webm.m3u8', function(playlist_urls) {
+load_playlist('clips/Nasa-webm.m3u8', function(playlist_urls) {
   for (var i = 0; i < playlist_urls.length; i++) {
     GET(playlist_urls[i], readPlaylistItem);
   }
