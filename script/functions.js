@@ -1,6 +1,8 @@
 // http://www.w3.org/TR/media-source/#examples
 // https://github.com/jbochi/media-source-playground/blob/master/test.html
-var buffers = [];
+var buffers = [],
+    totalVideos,
+    duration = 0;
 
 function onSourceOpen(videoTag, e) {
   var mediaSource = e.target;
@@ -35,26 +37,32 @@ function onSourceOpen(videoTag, e) {
   sourceBuffer.appendBuffer(initSegment);
 }
 
-var duration = 0;
-
 function appendNextMediaSegment(mediaSource) {
   console.log('--appendNextMediaSegment--');
-  if (mediaSource.readyState == "closed")
+  
+  // Make sure the previous append is not still pending.
+  if (mediaSource.sourceBuffers[0].updating) {
     return;
+  }
+
+  if (mediaSource.readyState !== "open") {
+    return;
+  }
+
+  if ( mediaSource.sourceBuffers[0].mode == "PARSING_MEDIA_SEGMENT" ) {
+    return;
+  }
 
   // If we have run out of stream data, then signal end of stream.
+  // This should come after the updating check.
   if (!HaveMoreMediaSegments()) {
+    console.log(mediaSource.readyState);
     console.log("There are no more media segments");
     mediaSource.endOfStream();
     return;
   }
 
-  // Make sure the previous append is not still pending.
-  if (mediaSource.sourceBuffers[0].updating)
-      return;
-
   var mediaSegment = GetNextMediaSegment();
-  console.log(mediaSegment);
 
   if (!mediaSegment) {
     // Error fetching the next media segment.
@@ -66,12 +74,10 @@ function appendNextMediaSegment(mediaSource) {
   // NOTE: If mediaSource.readyState == “ended”, this appendBuffer() call will
   // cause mediaSource.readyState to transition to "open". The web application
   // should be prepared to handle multiple “sourceopen” events.
-  if ( mediaSource.sourceBuffers[0].mode == "PARSING_MEDIA_SEGMENT" )
-    return;
 
-  //mediaSource.sourceBuffers[0].timestampOffset = duration;
+  // mediaSource.sourceBuffers[0].timestampOffset = duration;
   mediaSource.sourceBuffers[0].appendBuffer(mediaSegment);
-  //duration = ( mediaSource.duration || 0 );
+  // duration = mediaSource.duration;
 }
 
 function onSeeking(mediaSource, e) {
@@ -85,8 +91,8 @@ function onSeeking(mediaSource, e) {
 
   // Notify the media segment loading code to start fetching data at the
   // new playback position.
-  SeekToMediaSegmentAt(video.currentTime);
-  console.log(video.currentTime);
+  //SeekToMediaSegmentAt(video.currentTime);
+  //console.log(video.currentTime);
 
   // Append a media segment from the new playback position.
   appendNextMediaSegment(mediaSource);
@@ -108,7 +114,7 @@ function readPlaylistItem(uInt8Array) {
   reader.readAsArrayBuffer(file);
 }
 
-load_playlist('clips/Nasa-webm.m3u8', function(playlist_urls) {
+load_playlist('clips/playlist.m3u8', function(playlist_urls) {
   for (var i = 0; i < playlist_urls.length; i++) {
     GET(playlist_urls[i], readPlaylistItem);
   }
@@ -119,13 +125,15 @@ function GetNextMediaSegment() { // GetInitializationSegment
   console.log('--GetNextMediaSegment--');
   var buffer = buffers[0];
   buffers = buffers.slice(1);
+  console.log('Got video #' + ( totalVideos - buffers.length ) + ' of ' + totalVideos);
   return buffer;
 }
 
 function HaveMoreMediaSegments() {
   console.log('--HaveMoreMediaSegments--');
-  console.log('buffer length: ' + buffers.length);
-  return buffers.length > 0;
+  var bool = buffers.length > 0;
+  console.log(bool + ', remaining buffers: ' + buffers.length);
+  return bool;
 }
 
 //var GetNextMediaSegment = GetInitializationSegment;
@@ -161,6 +169,7 @@ function load_playlist(url, callback) {
     }
     console.log(urls);
     console.log('Playlist loaded');
+    totalVideos = urls.length;
     callback(urls);
   });
   xhr.addEventListener('error', function() {
