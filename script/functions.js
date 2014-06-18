@@ -75,9 +75,10 @@ function appendNextMediaSegment(mediaSource) {
   // cause mediaSource.readyState to transition to "open". The web application
   // should be prepared to handle multiple “sourceopen” events.
 
-  // mediaSource.sourceBuffers[0].timestampOffset = duration;
+  duration = mediaSource.duration;
+  console.log('Duration: ' + duration);
+  mediaSource.sourceBuffers[0].timestampOffset = duration;
   mediaSource.sourceBuffers[0].appendBuffer(mediaSegment);
-  // duration = mediaSource.duration;
 }
 
 function onSeeking(mediaSource, e) {
@@ -114,7 +115,7 @@ function readPlaylistItem(uInt8Array) {
   reader.readAsArrayBuffer(file);
 }
 
-load_playlist('clips/playlist.m3u8', function(playlist_urls) {
+load_playlist('clips/playlist.remuxed.m3u8', function(playlist_urls) {
   for (var i = 0; i < playlist_urls.length; i++) {
     GET(playlist_urls[i], readPlaylistItem);
   }
